@@ -32,7 +32,7 @@ function parseFont(file, data, cb) {
   cb(null, result)
 }
 
-module.exports = function loadFont(opt, cb) {
+module.exports = async function loadFont(opt, cb) {
   cb = typeof cb === 'function' ? cb : noop
 
   if (typeof opt === 'string') opt = { uri: opt, url: opt }
@@ -40,13 +40,18 @@ module.exports = function loadFont(opt, cb) {
 
   var file = opt.uri || opt.url
   
-  function handleData(err, data) {
-    if (err) return cb(err)
-    parseFont(file, data.body || data, cb)
+  function handleData(err, response) {
+    if (err) return cb(err);
+
+    if (response.statusCode && response.statusCode !== 200) {
+      return cb(new Error('Failed to load font: ' + response.statusCode));
+    }
+
+    parseFont(file, response.body || response, cb);
   }
 
   if (url.parse(file).host) {
-    request(opt, handleData)
+    handleData(null, await request(opt));
   } else {
     fs.readFile(file, opt, handleData)
   }
